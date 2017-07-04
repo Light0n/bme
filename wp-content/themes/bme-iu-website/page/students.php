@@ -1,6 +1,6 @@
 <?php
 /*
-Template Name: Alumni Page Template
+Template Name: Students Page Template
 */
  
 get_header();?>
@@ -74,18 +74,6 @@ get_header();?>
             ?>
             <?php echo wp_dropdown_categories( $args ); ?>
 
-            <?php
-                $args = array(
-                  'show_option_all' => __( 'All Employers' ),
-                  'show_count'       => 1,
-                  'orderby'          => 'name',
-                  'echo'             => 0,
-                  'name'             => 'employer',
-                  'taxonomy'         => 'employer',
-                );
-            ?>
-            <?php echo wp_dropdown_categories( $args ); ?>
-
             <select name="student_per_page">
               <option value="9">Students per page</option>
               <option value="18">18 students</option>
@@ -118,7 +106,6 @@ get_header();?>
           $academic_year = ( isset( $_GET['academic_year'] ) ) ? $_GET['academic_year'] : 0;
           $graduation_year = ( isset( $_GET['graduation_year'] ) ) ? $_GET['graduation_year'] : 0;
           $research_interest = ( isset( $_GET['research_interest'] ) ) ? $_GET['research_interest'] : 0;
-          $employer = ( isset( $_GET['employer'] ) ) ? $_GET['employer'] : 0;
           $student_per_page = ( isset( $_GET['student_per_page'] ) ) ? $_GET['student_per_page'] : 9;
 
           // Name of Overview
@@ -126,7 +113,6 @@ get_header();?>
           $academic_year_name = get_term( $academic_year, 'academic_year' )->name;
           $graduation_year_name = get_term( $graduation_year, 'graduation_year' )->name; 
           $research_interest_name = get_term( $research_interest, 'research_interest' )->name;
-          $employer_name = get_term( $employer, 'employer' )->name;
 
           $overview_arr = [];
 
@@ -134,12 +120,14 @@ get_header();?>
           $overview_arr[] = ($academic_year_name == "")? "All Academic Years" : "Academic Year ".$academic_year_name;
           $overview_arr[] = ($graduation_year_name == "")? "All Graduation Years" : "Graduation Year ".$graduation_year_name;
           $overview_arr[] = ($research_interest_name == "")? "All Research Interests" : $research_interest_name." Fied";
-          $overview_arr[] = ($employer_name == "")? "All Employers" : "work at ".$employer_name;
           $overview = join( ", ", $overview_arr );
           // Prepare data to draw
-          list($radar_data, $ri_array_by_gy_data,$graduated_data, $donut_gender_data, $donut_degree_data, $donut_ri_data, $donut_employer_data) = process_alumni_data($degree,$academic_year,$graduation_year,$research_interest, $employer);
+          list($graduated_data, $not_graduated_data, $radar_data, $donut_graduated_data, $donut_gender_data, $donut_degree_data, $donut_ri_data) = process_student_data($degree,$academic_year,$graduation_year,$research_interest);
 
           $donut_arrays = [];
+          if($donut_graduated_data){
+            $donut_arrays['donut_graduated'] = $donut_graduated_data;
+          }
           if($donut_gender_data){
             $donut_arrays['donut_gender'] = $donut_gender_data;
           }
@@ -148,9 +136,6 @@ get_header();?>
           }
           if($research_interest == 0 && $donut_ri_data){
             $donut_arrays['donut_ri'] = $donut_ri_data;
-          }
-          if($employer == 0 && $donut_employer_data){
-            $donut_arrays['donut_employer'] = $donut_employer_data;
           }
           $donut_chart_id = array_keys($donut_arrays);
 
@@ -164,13 +149,13 @@ get_header();?>
           <!-- Overview parts -->
           <div class="su-accordion">
             <div class="su-spoiler su-spoiler-style-fancy su-spoiler-icon-plus su-spoiler-closed">
-            <div class="su-spoiler-title"><span class="su-spoiler-icon"></span>Overview alumni in <?php echo $overview; ?></div>
+            <div class="su-spoiler-title"><span class="su-spoiler-icon"></span>Overview students in <?php echo $overview; ?></div>
             <div class="su-spoiler-content su-clearfix"> 
             <?php if($no_result){
               echo "<strong>No student found!</strong>";
               } ?>
-            <?php if ($graduation_year == 0) {
-              $academic_bar_chart_id = "ri_by_graduation_bar_chart";
+            <?php if ($academic_year == 0) {
+              $academic_bar_chart_id = "graduated_by_academic_bar_chart";
               echo '<div class="su-row">    
               <div class="su-column su-column-size-2-3 su-column-centered">
                 <div class="su-column-inner su-clearfix">
@@ -179,13 +164,13 @@ get_header();?>
               </div>
             </div> ';
             } ?>
-            <div class="su-row">    
+            <!-- <div class="su-row">    
               <div class="su-column su-column-size-2-3 su-column-centered">
                 <div class="su-column-inner su-clearfix">
-                <canvas id="test_chart" width="1" height="1"></canvas> 
+                <canvas id="radar_chart" width="1" height="1"></canvas> 
                 </div>
               </div>
-            </div>
+            </div> -->
             <?php 
               $chart_num = 1;
               foreach ($donut_chart_id as $id) {
@@ -209,7 +194,7 @@ get_header();?>
 
           <?php
           // Display students
-          $content = '[bme_student type="alumni" degree="'.$degree.'" academic_year="'.$academic_year.'" graduation_year="'.$graduation_year.'" research_interest="'.$research_interest.'" employer="'.$employer.'" pagination_type="numeric" limit="'.$student_per_page.'" grid="3" show_date="false" show_content="true" show_category_name="true" content_words_limit="30"]';
+          $content = '[bme_students type="student" degree="'.$degree.'" academic_year="'.$academic_year.'" graduation_year="'.$graduation_year.'" research_interest="'.$research_interest.'" tag_logic="" pagination_type="numeric" limit="'.$student_per_page.'" grid="3" show_date="false" show_content="true" show_category_name="true" content_words_limit="30"]';
           echo do_shortcode( $content );
           // end Display students
         ?>
@@ -223,31 +208,27 @@ get_header();?>
 <?php get_footer(); ?>
 
 
+
 <script>
 var chart_name = <?php echo json_encode($academic_bar_chart_id); ?>;
 var labels = <?php echo json_encode(array_keys($graduated_data)) ?>;
-var ri_array_by_gy_data = JSON.parse( '<?php echo json_encode($ri_array_by_gy_data) ?>' );
-
-// console.log(labels);
-// console.log(Object.keys(ri_array_by_gy_data));
-var ri_datasets = [];
-var ri_keys = Object.keys(ri_array_by_gy_data);
-var bg_color = getRandomColorArray(ri_keys.length);
-
-for (var i=0; i<ri_keys.length; i++){
-  ri_datasets[i] = {
-    label: ri_keys[i],
-    data: ri_array_by_gy_data[ri_keys[i]],
-    backgroundColor: bg_color[i],
-    hoverBackgroundColor: bg_color[i],
-    hoverBorderWidth: 2,
-    hoverBorderColor: 'lightgrey'
-  };
+var not_graduated_data = <?php echo json_encode(array_values($not_graduated_data)) ?>;
+var graduated_data = <?php echo json_encode(array_values($graduated_data)) ?>;
+// Bar Chart
+if(chart_name){
+  bar_chart(chart_name, labels, not_graduated_data, graduated_data);
 }
- stacked_bar_chart(chart_name, labels, ri_datasets);
+// Radar Chart
+// chart_name = 'radar_chart';
+// labels = <?php //echo json_encode($radar_labels) ?>;
+// var radar_data = <?php //echo json_encode($radar_data) ?>;
+// radar_chart(chart_name, labels, radar_data);
 // Donut Charts
 var donut_arrays_id = <?php echo json_encode(array_keys($donut_arrays)); ?>;
 var donut_arrays = <?php echo json_encode(array_values($donut_arrays)); ?>;
+console.log(donut_arrays_id);
+console.log(donut_arrays);
+console.log(typeof(donut_arrays));
 
 for (var i = 0; i < donut_arrays_id.length; i++) {
   chart_name = donut_arrays_id[i];
@@ -257,14 +238,32 @@ for (var i = 0; i < donut_arrays_id.length; i++) {
   doughnut_chart(chart_name, labels, data, bg_color);
 }
 
-function stacked_bar_chart(chart_name, labels, datasets){
+
+  function bar_chart(chart_name, labels, not_graduated_data, graduated_data){
     var ctx = document.getElementById(chart_name);
 
     var myChart = new Chart(ctx,{
       type: 'bar',
       data: {
           labels: labels,
-          datasets: datasets,
+          datasets: [
+          {
+              label: 'Graduated',
+              data: graduated_data,
+              backgroundColor: "rgba(55, 160, 225, 0.7)",
+              hoverBackgroundColor: "rgba(55, 160, 225, 0.7)",
+              hoverBorderWidth: 2,
+              hoverBorderColor: 'lightgrey'
+          },
+          {
+              label: 'Not Graduated',
+              data: not_graduated_data,
+              backgroundColor: "rgba(225, 58, 55, 0.7)",
+              hoverBackgroundColor: "rgba(225, 58, 55, 0.7)",
+              hoverBorderWidth: 2,
+              hoverBorderColor: 'lightgrey'
+          },
+          ]
       },
       options: {
           animation: false,
@@ -354,7 +353,7 @@ function stacked_bar_chart(chart_name, labels, datasets){
   }
 
   function getRandomColorArray(num) {
-    var nice_color = ["#000000","#ffc0cb","#008080","#ffe4e1","#ff0000","#ffd700","#00ffff","#d3ffce","#40e0d0","#ff7373","#0000ff","#eeeeee","#e6e6fa","#ffa500","#b0e0e6","#cccccc","#7fffd4","#333333","#800080","#00ff00","#c0c0c0","#20b2aa","#f6546a","#003366","#fa8072","#666666","#c6e2ff","#faebd7","#ffb6c1","#00ced1","#ffff00","#088da5","#ff6666","#ffc3a0","#66cdaa","#f08080","#468499","#fff68f","#800000","#ff00ff","#660066","#008000","#990000","#808080","#8b0000","#afeeee","#cbbeb5","#dddddd","#81d8d0","#c39797","#ffdab9","#daa520","#0e2f44","#ff7f50","#b4eeb4","#f5f5dc","#c0d6e4","#ff4040","#00ff7f","#66cccc","#b6fcd5","#cc0000","#a0db8e","#0099cc","#999999","#3399ff","#8a2be2","#ccff00","#ffff66","#3b5998","#794044","#6dc066","#000080","#191970","#31698a","#6897bb","#191919","#ff4444","#404040","#4169e1"];
+    var nice_color = ["#ffc0cb","#008080","#ffe4e1","#ff0000","#ffd700","#d3ffce","#00ffff","#40e0d0","#ff7373","#0000ff", "#ffa500","#cccccc","#7fffd4","#00ff00","#f6546a","#003366", "#c6e2ff", "#3399ff", "#0099cc", "#cc0000"];
 
     if(nice_color.length >= num){
       var shuffled = nice_color.sort(function(){return .5 - Math.random()});
@@ -365,24 +364,53 @@ function stacked_bar_chart(chart_name, labels, datasets){
 
 <?php 
 
-function process_alumni_data($degree,$academic_year,$graduation_year,$research_interest,$employer){
-  // Filter alumni 
-    if ($graduation_year == 0) {
-        $graduation_years = get_terms(
-            array(
-                'taxonomy'      => 'graduation_year', 
-                'hide_empty'    => false,
-            )
-        ); 
-        $graduation_year = [];
-        if ( ! empty( $graduation_years ) && ! is_wp_error( $graduation_years ) ){
-            foreach ( $graduation_years as $year ) {
-                $graduation_year[] = $year->term_id;
-            }
-        }
-    }
-    // End filter alumni
+function count_student($degree,$sex,$academic_year,$graduation_year,$research_interest){
+  $args = array ( 
+        'post_type'         => 'student', 
+        'posts_per_page'    => -1,   
+    );          
+    
+  $args['tax_query'] = array( 
+      'relation'      => 'AND',
+      ($degree? array( // for Degree
+          'taxonomy'  => 'degree',
+          'field'     => 'id', 
+          'terms'     => $degree,
+      ): ''),
+      array( 
+          'taxonomy'  => 'gender',
+          'field'     => 'slug', 
+          'terms'     => $sex,
+      ),
+      ($academic_year? array( // for Academic Year
+          'taxonomy'  => 'academic_year',
+          'field'     => 'id', 
+          'terms'     => $academic_year,
+      ): ''),
+      ($graduation_year? array( // for Graduation Year
+          'taxonomy'  => 'graduation_year',
+          'field'     => 'id', 
+          'terms'     => $graduation_year,
+      ): ''),
+      ($research_interest? array( // for Graduation Year
+          'taxonomy'  => 'research_interest',
+          'field'     => 'id', 
+          'terms'     => $research_interest,
+      ): ''),
+      'fields' => 'ids',
+      'cache_results' => false,               
+      'update_post_term_cache' => false,       
+      'update_post_meta_cache' => false,
+      'no_found_rows' => true,
+  );    
+  $the_query = new WP_Query( $args );
+  $count = $the_query->post_count;
+  // Reset Post Data
+  wp_reset_postdata();
+  return $count;
+}
 
+function process_student_data($degree,$academic_year,$graduation_year,$research_interest){
   $args = array ( 
         'post_type'         => 'student', 
         'posts_per_page'    => -1,   
@@ -410,35 +438,28 @@ function process_alumni_data($degree,$academic_year,$graduation_year,$research_i
           'field'     => 'id', 
           'terms'     => $research_interest,
       ): ''),
-      ($employer? array( // for Employer
-          'taxonomy'  => 'employer',
-          'field'     => 'id', 
-          'terms'     => $employer,
-      ): ''),
   );    
   $the_query = new WP_Query( $args );
-  if (count($graduation_year) > 1){ // return GY to 0 or not chosen GY option
-      $graduation_year = 0;
-  }
-
-
+  
   if($the_query->post_count == 0)// no students found
     return;
 
   // Initialize result arrays
+  $graduated_student_array = []; 
+  $not_graduated_student_array = [];
   $graduated_array = [];
-  $ri_array_by_gy = [];
   $gender_array = [];
   $degree_array = [];
   $ri_array = [];
-  $radar_array = [];
-  $employer_array = [];
+  $radar_array = [
+    'Graduated' => 0,
+    'Not Graduated' => 0,
+  ];
 
   // Add array keys as name of categories
-  if ($graduation_year == 0) { // Not choose specific Graduation Year
-    $graduated_array = taxonomy_name_index_array(array(),'graduation_year');
-    $ri_array_by_gy = add_array_keys(array(), 'research_interest', false, 
-      array_fill(0,count($graduated_array),0));
+  if ($academic_year == 0) { // Not choose specific Academic Year
+    $graduated_student_array = add_array_keys($graduated_student_array, 'academic_year');
+    $not_graduated_student_array = add_array_keys($not_graduated_student_array, 'academic_year');
   }
 
   $radar_array = add_array_keys($radar_array,'gender'); 
@@ -451,12 +472,11 @@ function process_alumni_data($degree,$academic_year,$graduation_year,$research_i
     $radar_array = add_array_keys($radar_array,'research_interest'); 
     $ri_array = add_array_keys($ri_array,'research_interest');  
   }
-  if ($employer == 0){
-    $employer_array = add_array_keys($employer_array,'employer'); 
-  }
   
+
+  $num_graduated = 0;
+  $num_not_graduated = 0;
   $num_not_decide = 0;
-  $num_no_job     = 0;
 
   while($the_query->have_posts()) {
     $the_query->the_post(); 
@@ -467,10 +487,14 @@ function process_alumni_data($degree,$academic_year,$graduation_year,$research_i
     $sex = get_the_terms( $post->ID, 'gender' );
     $ri = get_the_terms( $post->ID, 'research_interest' );
     $d = get_the_terms( $post->ID, 'degree' );
-    $employer_name = get_the_terms( $post->ID, 'employer' );
 
-    if($graduation_year == 0)
-      $ri_array_by_gy[$ri[0]->name][$graduated_array[$gy[0]->name]]++;    
+    if($gy){ // graduated
+      $graduated_student_array[$ay[0]->name] += 1; 
+      $num_graduated++;
+    }else{
+      $not_graduated_student_array[$ay[0]->name] += 1;
+      $num_not_graduated++;
+    }
 
     if($sex){
       $radar_array[$sex[0]->name] += 1; 
@@ -479,13 +503,6 @@ function process_alumni_data($degree,$academic_year,$graduation_year,$research_i
     if($d){
       $radar_array[$d[0]->name] += 1; 
       $degree_array[$d[0]->name] += 1; 
-    }
-    if($employer_name){
-      foreach ( $employer_name as $name ) {
-        $employer_array[$name->name] += 1;
-      } 
-    }else{
-      $num_no_job ++;
     }
     $num_ri = count($ri);
     if($ri){
@@ -498,37 +515,24 @@ function process_alumni_data($degree,$academic_year,$graduation_year,$research_i
     }
   } 
  
+  $graduated_array['Graduated'] = $num_graduated;
+  $graduated_array['Not Graduated'] = $num_not_graduated;
   $ri_array['Not Decide Research Interests'] = $num_not_decide ;
-  $employer_array['Unknown'] = $num_no_job;
+  $radar_array['Graduated'] = $num_graduated;
+  $radar_array['Not Graduated'] = $num_not_graduated;
   $radar_array['Not Decide Research Interests'] = $num_not_decide ;
 
-  return [ $radar_array, $ri_array_by_gy, $graduated_array, $gender_array, $degree_array, $ri_array, $employer_array];
+  return [$graduated_student_array, $not_graduated_student_array, $radar_array,
+  $graduated_array, $gender_array, $degree_array, $ri_array];
 }
 
-function add_array_keys($arr, $taxonomy, $hide = false, $data = 0.0){
+function add_array_keys($arr, $taxonomy, $hide = false){
   $terms = get_terms( array(
       'taxonomy' => $taxonomy,
       'hide_empty' => $hide,
-      'orderby' => 'name',
-      'order'   => 'ASC',
     ) );
   foreach ( $terms as $term ) {
-      $arr[$term->name] = $data; 
-    }
-  return $arr;
-}
-
-function taxonomy_name_index_array($arr, $taxonomy, $hide = false){
-  $terms = get_terms( array(
-      'taxonomy' => $taxonomy,
-      'hide_empty' => $hide,
-      'orderby' => 'name',
-      'order'   => 'ASC',
-    ) );
-  $index = 0;
-  foreach ( $terms as $term ) {
-      $arr[$term->name] = $index;
-      $index++; 
+      $arr[$term->name] = 0.0; 
     }
   return $arr;
 }

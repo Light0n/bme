@@ -3,7 +3,16 @@
 Template Name: Staffs Page Template
 */
  
-get_header();?>
+get_header();
+$html_content = [
+    'su-1-row-2-columns-centered-begin' => '<div class="su-row">      
+<div class="su-column su-column-size-1-6"> &emsp; </div>',
+    'su-1-row-2-columns-centered-end'   => '<div class="su-column su-column-size-1-6"> &emsp; </div>
+</div>',
+    'su-1-row-begin' => '<div class="su-row">',
+    'su-1-row-end' => '</div>',
+  ];
+?>
 
 <div id="primary" class="content-area">
   <div id="content" class="site-content" role="main">
@@ -47,25 +56,26 @@ get_header();?>
               $col_current++; //has staff
               if ($staff->field('menu_order') == 0 && $col_current == 1){
                 $col_mode = 2;
-                get_template_part('child-templates/su-1-row-2-columns-centered-begin');
+                echo $html_content['su-1-row-2-columns-centered-begin'];
               }else if ($staff->field('menu_order') > 1 && $col_current == 1) {
                 $col_mode = 3;
-                get_template_part('child-templates/su-1-row-begin');
+                echo $html_content['su-1-row-begin'];
               } 
 
-              get_template_part('child-templates/staff-circle-widget-content');
+              get_template_part('content/staff-circle');
 
               if ($col_current == $col_mode) {//end of row 
                 if ($col_mode == 2) {
-                  get_template_part('child-templates/su-1-row-2-columns-centered-end');
+                  echo $html_content['su-1-row-2-columns-centered-end'];
                   echo "<hr>";
                   $col_current = 0;
                 }else if ($col_mode == 3) {
-                  get_template_part('child-templates/su-1-row-end');
+                  echo $html_content['su-1-row-end'];
+
                   $col_current = 0;
                 }
               } else if (($staffs->current_post +1) == ($staffs->post_count) && $col_current == 2) { //last staff and 2 columns -> add one more column before close row
-                  get_template_part('child-templates/su-1-row-2-columns-centered-end');
+                  echo $html_content['su-1-row-2-columns-centered-end'];
               }
               ?> 
             <?php endwhile; ?>   

@@ -11,31 +11,26 @@ if ( $query->have_posts() ) : while ( $query->have_posts() ) : $query->the_post(
    $term_gender = get_the_terms( $post->ID, 'gender' ); 
    $news_links = array();
         
-  	if($term_degree){
-      foreach ( $term_degree as $term ) {
-         $term_link = get_term_link( $term );
-         $news_links[] = '<a href="' . esc_url( $term_link ) . '">'.$term->name.'</a>';
-      }
-  	}
-  	if($term_academic_year){
-      foreach ( $term_academic_year as $term ) {
-         $term_link = get_term_link( $term );
-         $news_links[] = '<a href="' . esc_url( $term_link ) . '">Academic Year '.$term->name.'</a>';
-      }
-  }
-  if($term_graduation_year){
-      foreach ( $term_graduation_year as $term ) {
-         $term_link = get_term_link( $term );
-         $news_links[] = '<a href="' . esc_url( $term_link ) . '">Graduation Year '.$term->name.'</a>';
-      }
-  }
-  // if($term_gender){
-  //     foreach ( $term_gender as $term ) {
+  // 	if($term_degree){
+  //     foreach ( $term_degree as $term ) {
   //        $term_link = get_term_link( $term );
   //        $news_links[] = '<a href="' . esc_url( $term_link ) . '">'.$term->name.'</a>';
   //     }
+  // 	}
+  // 	if($term_academic_year){
+  //     foreach ( $term_academic_year as $term ) {
+  //        $term_link = get_term_link( $term );
+  //        $news_links[] = '<a href="' . esc_url( $term_link ) . '">Academic Year '.$term->name.'</a>';
+  //     }
   // }
-  $cate_name = join( ", ", $news_links );
+  // if($term_graduation_year){
+  //     foreach ( $term_graduation_year as $term ) {
+  //        $term_link = get_term_link( $term );
+  //        $news_links[] = '<a href="' . esc_url( $term_link ) . '">Graduation Year '.$term->name.'</a>';
+  //     }
+  // }
+
+  // $cate_name = join( ", ", $news_links );
 
   // Research Interest tags
   $terms = get_the_terms( $post->ID, 'research_interest' ); 
@@ -86,13 +81,15 @@ if ( $query->have_posts() ) : while ( $query->have_posts() ) : $query->the_post(
          <div class="post-content-text">
          	
             <?php 
+              $content_title = '<h6 class="news-title"><strong><a>'.$student->display('student_id').'</a></strong>';
+
+              if ($student->display('linkedin')) {
+                $content_title = $content_title.'&nbsp;'."<a href='".$student->display('linkedin')."' target='_blank'>".do_shortcode("[icon name='linkedin-square'  unprefixed_class='']")."</a>";
+              }  
               if ($student->display('student_cv')){
-                // the_title( sprintf( '<h6 class="news-title"><strong><a>'.$student->display('student_id').'</a></strong>'."&nbsp;&nbsp;&nbsp;".do_shortcode('[su_lightbox src="'.$student->display('student_cv').'"][su_button url="'.$student->display('student_cv').'" target="blank" style="flat" background="#004B87" size="3" icon="icon: cloud-download" rel="lightbox"]CV[/su_button][/su_lightbox]' ).'<br>', esc_url( get_permalink() ) ), '</h6>' );
-                the_title( sprintf( '<h6 class="news-title"><strong><a>'.$student->display('student_id').'</a></strong>'."&nbsp;&nbsp;&nbsp;".do_shortcode('[su_button url="'.$student->display('student_cv').'" target="blank" style="flat" background="#004B87" size="3" icon="icon: cloud-download" rel="lightbox"]CV[/su_button]' ).'<br>', esc_url( get_permalink() ) ), '</h6>' );
+                $content_title = $content_title.'&nbsp;'.do_shortcode('[su_button url="'.$student->display('student_cv').'" target="blank" style="flat" background="#004B87" size="3" icon="icon: cloud-download" rel="lightbox"]CV[/su_button]'); 
               }
-                else{
-                the_title( sprintf( '<h6 class="news-title"><strong><a>'.$student->display('student_id').'</a></strong><br>', esc_url( get_permalink() ) ), '</h6>' );
-              }
+              the_title( sprintf( $content_title.'<br>', esc_url( get_permalink() ) ), '</h6>' );
             ?>
             <div class="grid-date-post">
                <strong> <?php //echo $cate_name;
@@ -101,12 +98,7 @@ if ( $query->have_posts() ) : while ( $query->have_posts() ) : $query->the_post(
                   echo ' - <a href="'.$student->display('employer_website').'" target="_blank">';
                   echo $student->display('employer').'</a>';
                 } 
-                // else
-                //   echo "<br>";
-                //echo "&nbsp;".do_shortcode('[su_button url="'.$student->display('cv').'" target="blank" style="flat" background="#42a4d6" size="2" icon="icon: cloud-download" rel="lightbox"]CV[/su_button]' );
-
                ?> </strong>
-               
             </div>
 
 				<div class="su-accordion">
@@ -117,15 +109,13 @@ if ( $query->have_posts() ) : while ( $query->have_posts() ) : $query->the_post(
 							<tbody>
                 <tr>
                 <td><strong>Degree</strong></td>
-                <td><?php //echo "&nbsp;".$student->display('current_job').' at <a href="'.$student->display('employer.website').'" target="_blank">'; 
-                          //echo $student->display('employer').'</a>';
-                          echo $term_degree[0]->name;
+                <td><?php 
+                  echo $term_degree[0]->name;
                 ?></td>
                 </tr>
                 <tr>
                 <td><strong>AY – GY</strong></td>
-                <td><?php //echo "&nbsp;".$student->display('current_job').' at <a href="'.$student->display('employer.website').'" target="_blank">'; 
-                          //echo $student->display('employer').'</a>';
+                <td><?php 
                           echo $term_academic_year[0]->name.' – '.$term_graduation_year[0]->name;
                 ?></td>
                 </tr>
@@ -177,8 +167,6 @@ if ( $query->have_posts() ) : while ( $query->have_posts() ) : $query->the_post(
                 ?></td>
                 </tr>             
                 <?php endif ?>
-								
-                
 							</tbody>
 						</table>
  					</div> <!-- end su-spoiler-content  --> 
